@@ -75,6 +75,20 @@ The more branded alternative is possible but materially larger: Spark would need
 
 See [Wi-Fi Connectivity Approach](wifi-connectivity.md) for the detailed implementation shape.
 
+## OTA Update Strategy
+
+Spark should own update checks and installation timing instead of exposing Android's user-facing updater UI in kiosk mode.
+
+The update approach uses three lanes:
+
+- Spark app updates for kiosk UI and policy behavior.
+- WebView-only OTA for `com.android.webview` engine refreshes when Android accepts the package as a valid provider update.
+- Full ROM OTA for framework, kernel, vendor, overlay, boot, recovery, or other platform changes.
+
+The smallest safe update should be preferred. Full ROM OTA is reserved for cases where an app or WebView package update cannot carry the required change.
+
+See [OTA Update Strategy](ota-updates.md) for the detailed implementation shape.
+
 ## Spark Controls Drawer
 
 The Spark controls are an app-owned top drawer opened by a downward swipe from the top edge. It is centered, constrained to the actual current app width, and uses a bottom gripper so it does not read as a full-screen native shade.

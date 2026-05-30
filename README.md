@@ -17,6 +17,7 @@ This repository stores the app source, Android runtime-resource overlays, boot b
 - `docs/requirements.md` - product and system requirements.
 - `docs/approach.md` - architecture and implementation approach.
 - `docs/wifi-connectivity.md` - Wi-Fi setup and captive portal approach.
+- `docs/ota-updates.md` - Spark-owned WebView and full-ROM OTA update strategy.
 - `docs/operations.md` - build, install, recovery, and verification procedures.
 - `docs/device-state.md` - current device state and observed versions.
 - `docs/known-issues.md` - known risks and remaining checks.

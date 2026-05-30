@@ -45,6 +45,28 @@ adb -s CB51286PFD shell cmd uimode night
 
 On the current Android boot, `adb root` reports disabled even though the ROM is `userdebug`. Use recovery/TWRP for `/system` and protected `/data` changes.
 
+## OTA Update Checks
+
+See [OTA Update Strategy](ota-updates.md) for the planned Spark-owned update architecture.
+
+Check the current WebView provider:
+
+```sh
+adb -s CB51286PFD shell dumpsys webviewupdate
+adb -s CB51286PFD shell dumpsys package com.android.webview | rg -n 'versionCode|versionName|codePath|User 0'
+```
+
+Check current OS patch/build state:
+
+```sh
+adb -s CB51286PFD shell getprop ro.build.version.security_patch
+adb -s CB51286PFD shell getprop ro.vendor.build.security_patch
+adb -s CB51286PFD shell getprop ro.lineage.version
+adb -s CB51286PFD shell getprop ro.lineage.releasetype
+```
+
+In normal kiosk mode, user-facing updater UI should remain hidden or unreachable. Spark should own update metadata checks, payload verification, installation timing, and post-update verification.
+
 ## Device Owner
 
 Current device owner:
