@@ -55,6 +55,26 @@ That means the overlay no longer changes SystemUI service startup.
 
 Android Settings is intentionally unreachable from the tablet UI once kiosk mode is active. Routine runtime settings are handled by the Spark app or ADB `settings` commands. Root filesystem changes should be made from recovery/TWRP, not by trying to open Settings from the device.
 
+## Wi-Fi Connectivity Strategy
+
+Wi-Fi should remain Android-owned. Spark should show network state and offline recovery UI, but the first supported connection flow should temporarily hand off to Android's Wi-Fi settings/panel and `CaptivePortalLogin`.
+
+Recommended implementation:
+
+- show `Connect Wi-Fi` only from the offline screen or an admin-only drawer gesture
+- temporarily allow `com.android.settings` and `com.android.captiveportallogin` in lock task mode
+- temporarily unhide Android Settings if Spark has hidden it with device-owner policy
+- launch directly into Wi-Fi settings or the Wi-Fi panel
+- let Android handle SSID selection, passwords, saved networks, enterprise Wi-Fi, captive portals, and validation
+- return to Spark when the active network has `NET_CAPABILITY_VALIDATED`
+- re-apply the normal kiosk policy after returning
+
+This is preferred over a Spark-native Wi-Fi UI because captive portal flows depend on Android loading a login page over an unvalidated Wi-Fi network and then re-checking connectivity. Hotel, school, and enterprise networks often rely on Android's built-in behavior.
+
+The more branded alternative is possible but materially larger: Spark would need network scanning, location-permission handling, password and enterprise credential UI, privileged/system-app or ROM-level connection rights, captive portal detection, a portal browser bound to the captive network, and a clean handoff back to Android validation.
+
+See [Wi-Fi Connectivity Approach](wifi-connectivity.md) for the detailed implementation shape.
+
 ## Spark Controls Drawer
 
 The Spark controls are an app-owned top drawer opened by a downward swipe from the top edge. It is centered, constrained to the actual current app width, and uses a bottom gripper so it does not read as a full-screen native shade.

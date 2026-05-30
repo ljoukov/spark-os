@@ -10,6 +10,7 @@ The first usable screen must be Spark, not a launcher, browser chooser, settings
 
 - Launch `https://spark.eviworld.com/` automatically.
 - If Spark starts before network is ready, show a large friendly offline screen with Reload. Retry loading automatically when connectivity appears, but only until the first successful page load.
+- Future offline recovery should add a controlled `Connect Wi-Fi` flow that uses Android's Wi-Fi and captive portal UI while keeping the rest of Settings unreachable.
 - Use a native Android shell around WebView, not a full browser UI.
 - Keep rendering fast enough for an education UI with text, chat, lessons, worksheets, occasional images, and camera/file uploads.
 - Keep the Spark web app free to use modern browser APIs where WebView supports them.

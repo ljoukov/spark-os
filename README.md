@@ -16,6 +16,7 @@ This repository stores the app source, Android runtime-resource overlays, boot b
 - `overlays/latinime/` - LatinIME overlay that removes the voice key option.
 - `docs/requirements.md` - product and system requirements.
 - `docs/approach.md` - architecture and implementation approach.
+- `docs/wifi-connectivity.md` - Wi-Fi setup and captive portal approach.
 - `docs/operations.md` - build, install, recovery, and verification procedures.
 - `docs/device-state.md` - current device state and observed versions.
 - `docs/known-issues.md` - known risks and remaining checks.
