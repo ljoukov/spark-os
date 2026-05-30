@@ -1,0 +1,15 @@
+<resources>
+    <dimen name="navigation_bar_deadzone_size">0dp</dimen>
+    <dimen name="navigation_bar_deadzone_size_max">0dp</dimen>
+    <dimen name="navigation_bar_default_edge_height">0dp</dimen>
+    <dimen name="navigation_bar_frame_height">0dp</dimen>
+    <dimen name="navigation_bar_height">0dp</dimen>
+    <dimen name="navigation_bar_height_car_mode">0dp</dimen>
+    <dimen name="navigation_bar_min_swipe_distance">10000dp</dimen>
+    <dimen name="navigation_bar_size">0dp</dimen>
+    <dimen name="status_bar_header_height_expanded">0dp</dimen>
+    <dimen name="status_bar_header_height_keyguard">0dp</dimen>
+    <dimen name="status_bar_height">0dp</dimen>
+    <dimen name="status_bar_icon_size">0dp</dimen>
+    <dimen name="status_bar_wifi_signal_size">0dp</dimen>
+</resources>

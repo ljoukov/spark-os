@@ -1,0 +1,13 @@
+**/build/
+**/*.apk
+**/*.apk.idsig
+**/*.ap_
+**/*.dex
+**/*.idsig
+**/*.img
+**/*.sin
+**/*.elf
+**/*.ta
+**/*.zip
+**/*.keystore
+*.log

@@ -1,0 +1,3 @@
+<resources>
+    <bool name="config_enable_show_voice_key_option">false</bool>
+</resources>
