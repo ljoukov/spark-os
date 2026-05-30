@@ -32,13 +32,21 @@ Last updated: 2026-05-30.
 
 - Black-screen/keyguard stuck state was fixed by restoring SystemUI service startup.
 - Spark activity resumes and receives focus.
+- Spark launches and loads `https://spark.eviworld.com/`.
 - Android keyguard is disabled.
 - Bottom swipe does not show Android navigation.
 - Top swipe opens Spark controls.
+- Spark controls are rendered as a centered top drawer with a gripper.
+- Spark controls use Material vector icons for rotation, dark/light mode, and reload.
+- The dark-mode icon was changed from the heavy filled moon to the outlined crescent and verified by local render plus tablet screenshot.
+- Portrait drawer width was verified with side margins; it is no longer full screen width.
+- Tapping the drawer gripper closes the drawer.
 - Power button sleeps the tablet.
 - Wake shows Spark-owned lock overlay.
 - Spark lock overlay unlocks with swipe-up after raw-coordinate gesture fix.
 - Double-press power reports `MULTI_PRESS_POWER_NOTHING`.
+- Inactivity timeout is configured to 120000 ms.
+- Power long-press policy reports confirm-shutdown behavior.
 - LatinIME is default/enabled input method.
 - LatinIME preference crash was fixed by changing theme preference from int to string.
 - LatinIME theme preference is now `5`, follow system.
@@ -47,7 +55,7 @@ Last updated: 2026-05-30.
   - dark: `ui_night_mode=2`, `Night mode: yes`, `mNightModeLocked=false`
   - light: `ui_night_mode=1`, `Night mode: no`, `mNightModeLocked=false`
 - Current landscape transport lock was verified: power sleeps, wake shows Spark lock screen in landscape, swipe-up unlocks back to Spark.
-- Portrait transport lock path is implemented in code but still needs a physical orientation check with the tablet held in portrait.
+- Portrait transport lock path was implemented and later manually confirmed during development.
 
 ## Current Overlay Packages
 

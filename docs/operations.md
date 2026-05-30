@@ -30,6 +30,21 @@ ADB may first try incremental install and then fall back to streamed install. Th
 
 The app also requests `MODIFY_DAY_NIGHT_MODE`, but this permission is not grantable with `pm grant` on the current ROM. The app therefore uses secure settings/device-owner fallbacks for night mode.
 
+## Kiosk Mode And Settings
+
+The tablet UI is intentionally locked to Spark. Do not expect to reach Android Settings from the device after provisioning.
+
+Use ADB for runtime settings checks:
+
+```sh
+adb -s CB51286PFD shell settings get system screen_off_timeout
+adb -s CB51286PFD shell settings get system accelerometer_rotation
+adb -s CB51286PFD shell settings get system user_rotation
+adb -s CB51286PFD shell cmd uimode night
+```
+
+On the current Android boot, `adb root` reports disabled even though the ROM is `userdebug`. Use recovery/TWRP for `/system` and protected `/data` changes.
+
 ## Device Owner
 
 Current device owner:
@@ -109,6 +124,25 @@ adb -s CB51286PFD shell rm -f /mnt/userdata/resource-cache/system@product@overla
 Reboot:
 
 ```sh
+adb -s CB51286PFD reboot
+```
+
+## Install Boot Animation From Recovery
+
+Build the boot animation zip outside the repo. The repo stores source frames under `apps/spark-kiosk/bootanimation/`, but the generated zip is ignored.
+
+```sh
+rm -f /tmp/spark-bootanimation.zip
+cd /home/liudmila/spark-os/apps/spark-kiosk/bootanimation
+zip -0 -r /tmp/spark-bootanimation.zip desc.txt part0
+```
+
+From recovery after mounting system:
+
+```sh
+adb -s CB51286PFD push /tmp/spark-bootanimation.zip /mnt/system/system/media/bootanimation.zip
+adb -s CB51286PFD shell chmod 0644 /mnt/system/system/media/bootanimation.zip
+adb -s CB51286PFD shell chown 0:0 /mnt/system/system/media/bootanimation.zip
 adb -s CB51286PFD reboot
 ```
 

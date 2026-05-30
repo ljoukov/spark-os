@@ -18,6 +18,7 @@ The kiosk app is `com.eviworld.spark`.
 Main responsibilities:
 
 - open `https://spark.eviworld.com/` in WebView
+- show an offline/retry page if Spark starts before connectivity is available
 - draw Spark top bar
 - draw Spark top-swipe controls
 - draw Spark transport lock screen
@@ -51,6 +52,23 @@ The current `overlays/systemui/res/values/arrays.xml` is intentionally empty:
 ```
 
 That means the overlay no longer changes SystemUI service startup.
+
+Android Settings is intentionally unreachable from the tablet UI once kiosk mode is active. Routine runtime settings are handled by the Spark app or ADB `settings` commands. Root filesystem changes should be made from recovery/TWRP, not by trying to open Settings from the device.
+
+## Spark Controls Drawer
+
+The Spark controls are an app-owned top drawer opened by a downward swipe from the top edge. It is centered, constrained to the actual current app width, and uses a bottom gripper so it does not read as a full-screen native shade.
+
+The drawer owns these controls:
+
+- brightness slider
+- rotation lock / auto-rotate icon
+- dark/light mode icon
+- reload icon
+
+The drawer closes only from an outside tap or from the gripper. It does not attach a broad vertical swipe handler to the sheet body, because that steals touch events from the brightness slider.
+
+The icon set is based on Google Material vector icons. The dark-mode icon uses the outlined/even-odd crescent rather than the filled moon, because the filled Material icon looked too heavy inside the circular button at this size.
 
 ## Runtime Resource Overlays
 
@@ -98,6 +116,14 @@ Spark's dark/light switch now also sets Android `ui_night_mode` so LatinIME can 
 The Spark menu's auto-rotate switch controls both Android rotation settings and the app's requested orientation.
 
 When auto-rotate is turned off, the app stores the current display rotation in `PREF_USER_ROTATION`. The transport lock re-applies that stored rotation on screen-off and screen-on, so a portrait-locked tablet shows the Spark lock screen in portrait and unlocks back into portrait.
+
+When auto-rotate is enabled, the lock screen is allowed to continue using the sensor.
+
+## Power Strategy
+
+Spark removes `FLAG_KEEP_SCREEN_ON`, writes `screen_off_timeout=120000`, and also schedules its own inactivity lock after 2 minutes of user inactivity.
+
+Short-press power sleeps the device and marks Spark's transport lock state. Long-press power is configured to Android's confirm-shutdown behavior through global power-button settings.
 
 ## Boot/Recovery Strategy
 

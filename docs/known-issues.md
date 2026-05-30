@@ -76,6 +76,12 @@ Repeat for landscape if needed.
 
 Recovery has sometimes returned to Android after a short window. System partition changes should be scripted and executed promptly after `adb reboot recovery`.
 
+## Android Settings Is Not A Maintenance Path
+
+The kiosk intentionally hides Settings and disables the user-facing system surfaces. If a maintenance task requires Settings, prefer ADB commands or temporarily change kiosk/device-owner policy from ADB. For root filesystem changes, use recovery/TWRP.
+
+On this build, `adb root` can still report disabled in normal Android even when `settings get global adb_root` is `1`; recovery is the reliable root path.
+
 ## Generated Artifacts Are Excluded
 
 This repo intentionally excludes:

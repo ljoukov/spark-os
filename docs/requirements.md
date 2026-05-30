@@ -9,6 +9,7 @@ The first usable screen must be Spark, not a launcher, browser chooser, settings
 ## App Experience
 
 - Launch `https://spark.eviworld.com/` automatically.
+- If Spark starts before network is ready, show a large friendly offline screen with Reload. Retry loading automatically when connectivity appears, but only until the first successful page load.
 - Use a native Android shell around WebView, not a full browser UI.
 - Keep rendering fast enough for an education UI with text, chat, lessons, worksheets, occasional images, and camera/file uploads.
 - Keep the Spark web app free to use modern browser APIs where WebView supports them.
@@ -53,11 +54,18 @@ The first usable screen must be Spark, not a launcher, browser chooser, settings
   - auto rotate / rotation lock
   - light/dark mode
   - Reload
-- Spark system menu closes by tapping outside it. It must not have a visible close X or large close button.
+- Brightness uses a slider with standard Android-style brightness iconography, not a text label.
+- Auto rotate / rotation lock, light/dark mode, and Reload use standard vector iconography.
+- Spark system menu is a centered top drawer, not a full-width dialog.
+- Spark system menu has a bottom gripper and closes only by tapping outside it or using the gripper. Dragging the brightness slider must not close the drawer.
+- Spark system menu follows the current light/dark mode. It must not stay visually dark in light mode.
+- Spark system menu must not have a visible close X or large close button.
 
 ## Locking
 
 - Physical power button is the transport lock action.
+- Screen auto-locks and powers down after 2 minutes of inactivity.
+- Long-press power should show the Android shutdown confirmation, then actually shut down when confirmed.
 - No PIN/password is needed.
 - On screen-off, Spark stores a locked state.
 - On wake, Spark shows its own lock overlay.
