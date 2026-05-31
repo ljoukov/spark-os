@@ -137,10 +137,20 @@ adb -s CB51286PFD shell chmod 0644 /mnt/system/system/product/overlay/SparkLatin
 adb -s CB51286PFD shell chown 0:0 /mnt/system/system/product/overlay/SparkLatinIMEOverlay/SparkLatinIMEOverlay.apk
 ```
 
+Snap camera overlay:
+
+```sh
+adb -s CB51286PFD shell mkdir -p /mnt/system/system/product/overlay/SparkSnapCameraOverlay
+adb -s CB51286PFD push SparkSnapCameraOverlay.apk /mnt/system/system/product/overlay/SparkSnapCameraOverlay/SparkSnapCameraOverlay.apk
+adb -s CB51286PFD shell chmod 0644 /mnt/system/system/product/overlay/SparkSnapCameraOverlay/SparkSnapCameraOverlay.apk
+adb -s CB51286PFD shell chown 0:0 /mnt/system/system/product/overlay/SparkSnapCameraOverlay/SparkSnapCameraOverlay.apk
+```
+
 If replacing an existing overlay, remove stale idmap cache:
 
 ```sh
 adb -s CB51286PFD shell rm -f /mnt/userdata/resource-cache/system@product@overlay@SparkSystemUIOverlay@SparkSystemUIOverlay.apk@idmap
+adb -s CB51286PFD shell rm -f /mnt/userdata/resource-cache/system@product@overlay@SparkSnapCameraOverlay@SparkSnapCameraOverlay.apk@idmap
 ```
 
 Reboot:
@@ -220,7 +230,7 @@ Expected:
 Check overlays:
 
 ```sh
-adb -s CB51286PFD shell cmd overlay list | rg -n 'spark|Spark|latin|systemui'
+adb -s CB51286PFD shell cmd overlay list | rg -n 'spark|Spark|latin|systemui|snap'
 ```
 
 Expected:
@@ -228,6 +238,7 @@ Expected:
 - `[x] com.eviworld.spark.systembars.overlay`
 - `[x] com.eviworld.spark.systemui.overlay`
 - `[x] com.eviworld.spark.latinime.overlay`
+- `[x] com.eviworld.spark.snapcamera.overlay`
 
 Check keyboard:
 

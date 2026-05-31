@@ -14,6 +14,7 @@ This repository stores the app source, Android runtime-resource overlays, boot b
 - `overlays/system-bars/` - framework overlay for zero-height system bars and no software nav bar.
 - `overlays/systemui/` - SystemUI overlay for zero bar dimensions while keeping SystemUI services alive.
 - `overlays/latinime/` - LatinIME overlay that removes the voice key option.
+- `overlays/snap-camera/` - Snap camera overlay that keeps the shutter controls inside the full-height kiosk display frame.
 - `docs/requirements.md` - product and system requirements.
 - `docs/approach.md` - architecture and implementation approach.
 - `docs/wifi-connectivity.md` - Wi-Fi setup and captive portal approach.

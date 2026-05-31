@@ -15,6 +15,7 @@ KEYTOOL="$JAVA_HOME/bin/keytool"
 
 SYSTEMUI_APK="${SPARK_SYSTEMUI_APK:-/home/liudmila/spark-rom-work/apks/SystemUI.apk}"
 LATINIME_APK="${SPARK_LATINIME_APK:-/home/liudmila/spark-rom-work/apks/LatinIME.apk}"
+SNAP_APK="${SPARK_SNAP_APK:-/home/liudmila/spark-rom-work/apks/Snap.apk}"
 
 ensure_keystore() {
   if [[ -f "$KEYSTORE" ]]; then
@@ -75,3 +76,4 @@ ensure_keystore
 build_overlay SparkSystemBarsOverlay "$ROOT/overlays/system-bars"
 build_overlay SparkSystemUIOverlay "$ROOT/overlays/systemui" "$SYSTEMUI_APK"
 build_overlay SparkLatinIMEOverlay "$ROOT/overlays/latinime" "$LATINIME_APK"
+build_overlay SparkSnapCameraOverlay "$ROOT/overlays/snap-camera" "$SNAP_APK"

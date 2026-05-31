@@ -74,6 +74,7 @@ import java.util.Set;
 public class MainActivity extends Activity {
     private static final String SPARK_URL = "https://spark.eviworld.com/";
     private static final String SPARK_HOST = "spark.eviworld.com";
+    private static final String SPARK_OS_USER_AGENT_CAPABILITIES = "SparkOS/1 SparkFileAccess/none";
     private static final String PREFS = "spark_prefs";
     private static final String PREF_BRIGHTNESS = "brightness";
     private static final String PREF_ROTATE = "rotate";
@@ -669,6 +670,11 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        String userAgent = settings.getUserAgentString();
+        if (userAgent == null || !userAgent.contains("SparkOS/1")) {
+            settings.setUserAgentString((userAgent == null ? "" : userAgent + " ")
+                    + SPARK_OS_USER_AGENT_CAPABILITIES);
+        }
         settings.setSafeBrowsingEnabled(true);
         WebView.setWebContentsDebuggingEnabled(false);
 
