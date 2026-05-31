@@ -81,8 +81,12 @@ public class MainActivity extends Activity {
     private static final String PREF_DARK = "dark";
     private static final String PREF_TRANSPORT_LOCKED = "transport_locked";
     private static final String PREF_USER_ROTATION = "user_rotation";
+    private static final String PREF_LOCKED_ORIENTATION = "locked_orientation";
+    private static final String PREF_LOCKED_ORIENTATION_ROTATION = "locked_orientation_rotation";
     private static final int FILE_CHOOSER_REQUEST = 4100;
     private static final long INACTIVITY_TIMEOUT_MS = 120000L;
+    private static final long FIRST_LOAD_RETRY_MS = 5000L;
+    private static final long FIRST_LOAD_IN_PROGRESS_TIMEOUT_MS = 30000L;
 
     private WebView webView;
     private FrameLayout root;
@@ -103,6 +107,7 @@ public class MainActivity extends Activity {
     private BroadcastReceiver unlockReceiver;
     private BroadcastReceiver statusReceiver;
     private BroadcastReceiver screenReceiver;
+    private ConnectivityManager.NetworkCallback networkCallback;
     private TextView timeView;
     private TextView dateView;
     private WifiStatusView wifiView;
@@ -110,6 +115,7 @@ public class MainActivity extends Activity {
     private Handler handler;
     private Runnable clockTicker;
     private Runnable inactivityRunnable;
+    private Runnable firstLoadRetry;
     private float touchStartY;
     private float lockTouchStartY;
     private boolean topSwipeCandidate;
@@ -120,6 +126,8 @@ public class MainActivity extends Activity {
     private boolean sparkPageLoaded;
     private boolean loadWaitingForConnectivity;
     private boolean offlinePageShowing;
+    private boolean sparkLoadInProgress;
+    private long lastSparkLoadAttemptAt;
     private boolean suspendAutoRotationForLock;
     private ValueCallback<Uri[]> filePathCallback;
     private Uri cameraImageUri;
@@ -135,6 +143,7 @@ public class MainActivity extends Activity {
         handler = new Handler(Looper.getMainLooper());
 
         configureWindow();
+        applyLaunchOrientation();
         if (!isUserUnlocked()) {
             buildSplashOnlyLayout();
             applyDeviceOwnerPolicy();
@@ -148,6 +157,7 @@ public class MainActivity extends Activity {
         setTransportLocked(prefs.getBoolean(PREF_TRANSPORT_LOCKED, false), false);
         applyDeviceOwnerPolicy();
         registerStatusReceiver();
+        registerNetworkCallback();
         registerScreenReceiver();
         updateStatusBar();
         startClockTicker();
@@ -157,7 +167,24 @@ public class MainActivity extends Activity {
         } else {
             webView.restoreState(savedInstanceState);
         }
+        startFirstLoadRetry();
         resetInactivityTimer();
+    }
+
+    private void applyLaunchOrientation() {
+        if (prefs == null || prefs.getBoolean(PREF_ROTATE, true)) {
+            return;
+        }
+        int rotation = prefs.getInt(PREF_USER_ROTATION, Surface.ROTATION_0);
+        int orientation = lockedOrientationForRotation(rotation);
+        setRequestedOrientation(orientation);
+        if (Settings.System.canWrite(this)) {
+            try {
+                Settings.System.putInt(getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 0);
+                Settings.System.putInt(getContentResolver(), Settings.System.USER_ROTATION, rotation);
+            } catch (SecurityException ignored) {
+            }
+        }
     }
 
     @Override
@@ -166,12 +193,26 @@ public class MainActivity extends Activity {
         hideSystemBars();
         startKioskLock();
         setTransportLocked(prefs.getBoolean(PREF_TRANSPORT_LOCKED, false), false);
+        enforceSavedOrientationIfRotationLocked();
         scheduleHideSystemBars();
         updateStatusBar();
-        if (loadWaitingForConnectivity && !sparkPageLoaded && hasNetworkConnectivity()) {
-            loadSpark();
+        if (!sparkPageLoaded) {
+            retryFirstLoadNow();
+            startFirstLoadRetry();
         }
         resetInactivityTimer();
+    }
+
+    @Override
+    protected void onPause() {
+        enforceSavedOrientationIfRotationLocked();
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        enforceSavedOrientationIfRotationLocked();
+        super.onStop();
     }
 
     @Override
@@ -184,6 +225,7 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
+            enforceSavedOrientationIfRotationLocked();
             updateControlsSheetLayout();
             hideSystemBars();
             scheduleHideSystemBars();
@@ -192,6 +234,11 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        if (controlsPanelOpen) {
+            controlsDragging = false;
+            topSwipeCandidate = false;
+            return super.dispatchTouchEvent(event);
+        }
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             touchStartY = event.getY();
             topSwipeCandidate = touchStartY <= getStatusBarHeight() + dp(8);
@@ -768,15 +815,19 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    sparkLoadInProgress = false;
                     showOfflinePage();
+                    startFirstLoadRetry();
                 }
             }
 
             @Override
             public void onPageFinished(final WebView view, String url) {
+                sparkLoadInProgress = false;
                 if (!offlinePageShowing && isAllowed(Uri.parse(url))) {
                     sparkPageLoaded = true;
                     loadWaitingForConnectivity = false;
+                    stopFirstLoadRetry();
                 }
                 injectKioskPageStyle(view);
                 view.postDelayed(new Runnable() {
@@ -986,6 +1037,7 @@ public class MainActivity extends Activity {
         } else {
             showOfflinePage();
         }
+        startFirstLoadRetry();
     }
 
     private void loadSpark() {
@@ -994,7 +1046,52 @@ public class MainActivity extends Activity {
         }
         offlinePageShowing = false;
         loadWaitingForConnectivity = false;
+        sparkLoadInProgress = true;
+        lastSparkLoadAttemptAt = System.currentTimeMillis();
         webView.loadUrl(SPARK_URL);
+    }
+
+    private void retryFirstLoadNow() {
+        if (sparkPageLoaded || webView == null) {
+            stopFirstLoadRetry();
+            return;
+        }
+        if (!hasNetworkConnectivity()) {
+            if (!offlinePageShowing) {
+                showOfflinePage();
+            }
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (!sparkLoadInProgress
+                || now - lastSparkLoadAttemptAt >= FIRST_LOAD_IN_PROGRESS_TIMEOUT_MS) {
+            loadSpark();
+        }
+    }
+
+    private void startFirstLoadRetry() {
+        if (handler == null || sparkPageLoaded) {
+            return;
+        }
+        if (firstLoadRetry == null) {
+            firstLoadRetry = new Runnable() {
+                @Override
+                public void run() {
+                    retryFirstLoadNow();
+                    if (!sparkPageLoaded && handler != null) {
+                        handler.postDelayed(this, FIRST_LOAD_RETRY_MS);
+                    }
+                }
+            };
+        }
+        handler.removeCallbacks(firstLoadRetry);
+        handler.postDelayed(firstLoadRetry, FIRST_LOAD_RETRY_MS);
+    }
+
+    private void stopFirstLoadRetry() {
+        if (handler != null && firstLoadRetry != null) {
+            handler.removeCallbacks(firstLoadRetry);
+        }
     }
 
     private void applySavedControls() {
@@ -1021,11 +1118,14 @@ public class MainActivity extends Activity {
     }
 
     private void applyRotation(boolean enabled, boolean save) {
-        int rotation = save ? getDisplayRotation()
-                : prefs.getInt(PREF_USER_ROTATION, getDisplayRotation());
+        int fallbackRotation = getDisplayRotation();
+        int rotation = save ? fallbackRotation
+                : prefs.getInt(PREF_USER_ROTATION, fallbackRotation);
+        int orientation = save ? activityOrientationForRotation(rotation)
+                : lockedOrientationForRotation(rotation);
         setRequestedOrientation(enabled
                 ? ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
-                : activityOrientationForRotation(rotation));
+                : orientation);
         if (Settings.System.canWrite(this)) {
             try {
                 Settings.System.putInt(getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, enabled ? 1 : 0);
@@ -1039,6 +1139,8 @@ public class MainActivity extends Activity {
             SharedPreferences.Editor editor = prefs.edit().putBoolean(PREF_ROTATE, enabled);
             if (!enabled) {
                 editor.putInt(PREF_USER_ROTATION, rotation);
+                editor.putInt(PREF_LOCKED_ORIENTATION, orientation);
+                editor.putInt(PREF_LOCKED_ORIENTATION_ROTATION, rotation);
             }
             editor.apply();
         }
@@ -1344,8 +1446,9 @@ public class MainActivity extends Activity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 updateStatusBar();
-                if (loadWaitingForConnectivity && !sparkPageLoaded && hasNetworkConnectivity()) {
-                    loadSpark();
+                if (!sparkPageLoaded) {
+                    retryFirstLoadNow();
+                    startFirstLoadRetry();
                 }
             }
         };
@@ -1354,6 +1457,60 @@ public class MainActivity extends Activity {
         filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         filter.addAction(WifiManager.RSSI_CHANGED_ACTION);
         registerReceiver(statusReceiver, filter);
+    }
+
+    private void registerNetworkCallback() {
+        if (networkCallback != null) {
+            return;
+        }
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) {
+            return;
+        }
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                handleNetworkMaybeReady();
+            }
+
+            @Override
+            public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+                handleNetworkMaybeReady();
+            }
+
+            @Override
+            public void onLost(Network network) {
+                if (handler != null) {
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateStatusBar();
+                        }
+                    });
+                }
+            }
+        };
+        try {
+            cm.registerDefaultNetworkCallback(networkCallback);
+        } catch (RuntimeException e) {
+            networkCallback = null;
+        }
+    }
+
+    private void handleNetworkMaybeReady() {
+        if (handler == null) {
+            return;
+        }
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                updateStatusBar();
+                if (!sparkPageLoaded) {
+                    retryFirstLoadNow();
+                    startFirstLoadRetry();
+                }
+            }
+        });
     }
 
     private void registerScreenReceiver() {
@@ -1368,6 +1525,7 @@ public class MainActivity extends Activity {
                     if (inactivityRunnable != null) {
                         handler.removeCallbacks(inactivityRunnable);
                     }
+                    enforceSavedOrientationIfRotationLocked();
                     storeCurrentRotationForLock();
                     setTransportLocked(true, true);
                     return;
@@ -1633,7 +1791,6 @@ public class MainActivity extends Activity {
     }
 
     private void storeCurrentRotationForLock() {
-        int rotation = getDisplayRotation();
         boolean autoRotate = prefs.getBoolean(PREF_ROTATE, true);
         suspendAutoRotationForLock = false;
         if (autoRotate) {
@@ -1646,12 +1803,19 @@ public class MainActivity extends Activity {
             }
             return;
         }
-        prefs.edit().putInt(PREF_USER_ROTATION, rotation).apply();
-        applyExactRotation(rotation);
+        int rotation = prefs.getInt(PREF_USER_ROTATION, getDisplayRotation());
+        int orientation = lockedOrientationForRotation(rotation);
+        prefs.edit()
+                .putInt(PREF_USER_ROTATION, rotation)
+                .putInt(PREF_LOCKED_ORIENTATION, orientation)
+                .putInt(PREF_LOCKED_ORIENTATION_ROTATION, rotation)
+                .apply();
+        applyExactOrientation(orientation, rotation);
     }
 
     private void applyLockOverlayRotation() {
         int rotation = prefs.getInt(PREF_USER_ROTATION, getDisplayRotation());
+        int orientation = lockedOrientationForRotation(rotation);
         boolean autoRotate = prefs.getBoolean(PREF_ROTATE, true);
         if (autoRotate && !suspendAutoRotationForLock) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
@@ -1663,11 +1827,35 @@ public class MainActivity extends Activity {
             }
             return;
         }
-        applyExactRotation(rotation);
+        applyExactOrientation(orientation, rotation);
+    }
+
+    private void enforceSavedOrientationIfRotationLocked() {
+        if (transportLocked || prefs.getBoolean(PREF_ROTATE, true)) {
+            return;
+        }
+        int rotation = prefs.getInt(PREF_USER_ROTATION, getDisplayRotation());
+        int orientation = lockedOrientationForRotation(rotation);
+        applyExactOrientation(orientation, rotation);
+    }
+
+    private int lockedOrientationForRotation(int rotation) {
+        int fallback = activityOrientationForRotation(rotation);
+        if (!prefs.contains(PREF_LOCKED_ORIENTATION)) {
+            return fallback;
+        }
+        if (prefs.getInt(PREF_LOCKED_ORIENTATION_ROTATION, -1) != rotation) {
+            return fallback;
+        }
+        return prefs.getInt(PREF_LOCKED_ORIENTATION, fallback);
     }
 
     private void applyExactRotation(int rotation) {
-        setRequestedOrientation(activityOrientationForRotation(rotation));
+        applyExactOrientation(activityOrientationForRotation(rotation), rotation);
+    }
+
+    private void applyExactOrientation(int orientation, int rotation) {
+        setRequestedOrientation(orientation);
         if (Settings.System.canWrite(this)) {
             try {
                 Settings.System.putInt(getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 0);
@@ -2059,6 +2247,20 @@ public class MainActivity extends Activity {
         if (inactivityRunnable != null) {
             handler.removeCallbacks(inactivityRunnable);
             inactivityRunnable = null;
+        }
+        if (firstLoadRetry != null) {
+            handler.removeCallbacks(firstLoadRetry);
+            firstLoadRetry = null;
+        }
+        if (networkCallback != null) {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                try {
+                    cm.unregisterNetworkCallback(networkCallback);
+                } catch (RuntimeException ignored) {
+                }
+            }
+            networkCallback = null;
         }
         super.onDestroy();
     }

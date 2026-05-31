@@ -19,6 +19,7 @@ Main responsibilities:
 
 - open `https://spark.eviworld.com/` in WebView
 - show an offline/retry page if Spark starts before connectivity is available
+- keep retrying first load through a network callback plus a short watchdog until Spark has loaded once
 - draw Spark top bar
 - draw Spark top-swipe controls
 - draw Spark transport lock screen
@@ -106,7 +107,7 @@ The icon set is based on Google Material vector icons. The dark-mode icon uses t
 
 ## Runtime Resource Overlays
 
-Three overlays are used:
+Four overlays are used:
 
 - `com.eviworld.spark.systembars.overlay`
   - target: `android`
@@ -120,6 +121,9 @@ Three overlays are used:
 - `com.eviworld.spark.latinime.overlay`
   - target: `com.android.inputmethod.latin`
   - sets `config_enable_show_voice_key_option=false`
+- `com.eviworld.spark.snapcamera.overlay`
+  - target: `org.lineageos.snap`
+  - overrides Snap's tablet `shutter_offset` so camera controls are not clipped by Spark's full-height kiosk display frame
 
 These are static overlays installed under `/system/product/overlay/...` from recovery.
 
@@ -153,6 +157,10 @@ When auto-rotate is turned off, the app stores the current display rotation in `
 
 When auto-rotate is enabled, the lock screen is allowed to continue using the sensor.
 
+The app manifest uses `screenOrientation="user"` instead of `fullSensor`. When Spark rotation lock is active, the app enforces the saved orientation during resume, focus, pause, stop, and screen-off. This avoids a transient sensor/gravity orientation frame when the power button is pressed or the screen wakes.
+
+Spark also stores an explicit Android orientation constant alongside the display rotation. If old saved values disagree, the orientation is recomputed from the saved rotation rather than trusting stale data.
+
 ## Power Strategy
 
 Spark removes `FLAG_KEEP_SCREEN_ON`, writes `screen_off_timeout=120000`, and also schedules its own inactivity lock after 2 minutes of user inactivity.
@@ -164,3 +172,5 @@ Short-press power sleeps the device and marks Spark's transport lock state. Long
 Normal boot should show Spark branding and launch Spark automatically.
 
 Recovery remains available for maintenance. Recovery is used for root filesystem access because normal Android ADB root is disabled on this build. System overlays and LatinIME protected preferences are patched from recovery.
+
+The boot animation is a landscape system asset because the bootloader/boot animation path is not app-resource aware. The app splash is different: Android resource qualifiers are used so `drawable-nodpi/spark_splash.png` is landscape and `drawable-port-nodpi/spark_splash.png` is portrait. That prevents the app window background from stretching the landscape Spark AI image during portrait launch or lock transitions.

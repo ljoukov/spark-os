@@ -21,6 +21,7 @@ The first usable screen must be Spark, not a launcher, browser chooser, settings
 
 - Replace user-facing Sony/Xperia branding where practical.
 - Use Spark AI boot/app branding.
+- App splash assets must be orientation-specific. Do not stretch the landscape Spark AI image into portrait.
 - Spark lock screen text is exactly:
   - `Spark AI`
   - `Swipe up to unlock`
@@ -78,6 +79,7 @@ The first usable screen must be Spark, not a launcher, browser chooser, settings
   - if auto-rotate is locked in portrait, the lock screen remains portrait
   - unlocking should return to the same locked orientation
   - same applies to landscape/reverse orientations
+- When rotation lock is active, power sleep/wake should not briefly flash the gravity/sensor orientation before settling into the locked orientation.
 
 ## Keyboard
 
